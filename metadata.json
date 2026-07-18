@@ -1,0 +1,6 @@
+{
+  "name": "GrindStreaks",
+  "description": "A high-performance visual streak, habit, and study timetable tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

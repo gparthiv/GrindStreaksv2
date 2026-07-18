@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Google Sans Flex", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: "Google Sans Flex", "IBM Plex Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-variation-settings:
+    "slnt" 0,
+    "wdth" 100,
+    "GRAD" 0,
+    "ROND" 0;
+}
+
+/* Custom Scrollbar utilities */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Print utilities for elegant PDF generation */
+@media print {
+  /* Hide all interactive, dashboard controls and headers */
+  header,
+  .print\:hidden,
+  button,
+  form,
+  select,
+  input,
+  #conflict-dialog,
+  #restart-dialog,
+  #settings-overlay-panel {
+    display: none !important;
+  }
+
+  body {
+    background-color: white !important;
+    color: black !important;
+    font-size: 12pt;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Force full viewport layout on page */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Style cards as printable blocks */
+  div[id*="card"],
+  .rounded-\[16px\] {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    page-break-inside: avoid;
+    margin-bottom: 20px !important;
+    padding: 15px !important;
+  }
+
+  /* Keep charts and breakdowns perfectly visible */
+  .lg\:col-span-8,
+  .lg\:col-span-4 {
+    width: 100% !important;
+    display: block !important;
+    float: none !important;
+  }
+}
