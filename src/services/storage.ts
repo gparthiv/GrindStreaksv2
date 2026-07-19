@@ -340,7 +340,8 @@ export const saveTodayRecord = (record: DayRecord) => {
   // Recalculate rates
   const completedCount = record.tasks.filter(t => t.status === 'completed').length;
   const totalCount = record.tasks.length;
-  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const denominator = Math.max(totalCount, record.targetCount || 0);
+  const completionRate = denominator > 0 ? Math.round((completedCount / denominator) * 100) : 0;
   
   const studyTime = getStudyTimeForTasks(record.tasks);
 
@@ -387,7 +388,8 @@ export const checkDailyReset = (): { resetHappened: boolean; yesterdaySummary?: 
     // 1. Calculate final rates for yesterday and save to history
     const completedTasks = yesterdayRecord.tasks.filter(t => t.status === 'completed');
     const totalTasks = yesterdayRecord.tasks.length;
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+    const denominator = Math.max(totalTasks, yesterdayRecord.targetCount || 0);
+    const completionRate = denominator > 0 ? Math.round((completedTasks.length / denominator) * 100) : 0;
     
     const studyTime = getStudyTimeForTasks(yesterdayRecord.tasks);
 

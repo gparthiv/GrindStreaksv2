@@ -24,6 +24,8 @@ export interface DayRecord {
   totalCount: number;
   isDayStarted?: boolean;  // whether the user started their day
   isDayEnded?: boolean;    // whether the user wrapped up their day
+  targetCount?: number;    // targeted number of completed tasks
+  dailyGoalsText?: string; // rough wording description of today's target/goals
 }
 
 export interface Settings {

@@ -218,7 +218,7 @@ export const useTaskEngine = () => {
   }, []);
 
   // Morning Let's Start the Day Flow
-  const startDay = useCallback((firstTaskName: string, firstTaskTag: string) => {
+  const startDay = useCallback((firstTaskName: string, firstTaskTag: string, targetCount?: number, dailyGoalsText?: string) => {
     const now = Date.now();
     const newId = `task-${now}`;
     
@@ -241,7 +241,9 @@ export const useTaskEngine = () => {
       ...todayRecord, 
       tasks: updatedTasks, 
       isDayStarted: true,
-      isDayEnded: false 
+      isDayEnded: false,
+      targetCount: targetCount || 4,
+      dailyGoalsText: dailyGoalsText || ""
     };
     
     const savedRecord = storage.saveTodayRecord(record);

@@ -49,13 +49,18 @@ app.post("/api/ai/coach", async (req, res) => {
       .map(([date, record]: [string, any]) => {
         const completed = record.tasks.filter((t: any) => t.status === "completed").map((t: any) => t.name).join(", ");
         const incomplete = record.tasks.filter((t: any) => t.status !== "completed").map((t: any) => t.name).join(", ");
-        return `- Date: ${date}, Completion: ${record.completionRate}%, Active Work Time: ${(record.studyTime / (1000 * 60 * 60)).toFixed(2)} hrs. Completed: [${completed}]. Missed: [${incomplete}].`;
+        const targetText = record.targetCount ? ` Target: ${record.targetCount} tasks.` : "";
+        const goalsText = record.dailyGoalsText ? ` Focus Goals: [${record.dailyGoalsText}].` : "";
+        return `- Date: ${date}, Completion: ${record.completionRate}%, Active Work Time: ${(record.studyTime / (1000 * 60 * 60)).toFixed(2)} hrs.${targetText}${goalsText} Completed: [${completed}]. Missed: [${incomplete}].`;
       })
       .slice(-15) // Limit context to last 15 days to save tokens and keep latency low
       .join("\n");
 
     const todaySummary = todayRecord
-      ? `Today's Date: ${todayRecord.date}. Tasks completed so far: ${todayRecord.tasks.filter((t: any) => t.status === "completed").map((t: any) => t.name).join(", ") || "None"}. Active work time: ${(todayRecord.studyTime / (1000 * 60 * 60)).toFixed(2)} hrs.`
+      ? `Today's Date: ${todayRecord.date}. 
+         Today's Ambition/Target task count: ${todayRecord.targetCount || "Not set"}.
+         Today's Focus Goals: [${todayRecord.dailyGoalsText || "None set"}].
+         Tasks completed so far: ${todayRecord.tasks.filter((t: any) => t.status === "completed").map((t: any) => t.name).join(", ") || "None"}. Active work time: ${(todayRecord.studyTime / (1000 * 60 * 60)).toFixed(2)} hrs.`
       : "No data logged yet today.";
 
     const promptText = `

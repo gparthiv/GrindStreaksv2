@@ -558,7 +558,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Pie Chart: Time Spent Per Category */}
-              <Card className="p-5 bg-white dark:bg-zinc-900 border border-[#E0E3E7] dark:border-zinc-800 flex flex-col justify-between rounded-[16px] shadow-sm">
+              <Card className="p-5 bg-white dark:bg-zinc-900 border border-[#E0E3E7] dark:border-zinc-800 flex flex-col h-full justify-between rounded-[16px] shadow-sm">
                 <div className="space-y-1 mb-4">
                   <h4 className="font-semibold text-[#3C4043] dark:text-zinc-100 flex items-center gap-1.5 text-sm font-sans">
                     <PieIcon className="w-4 h-4 text-[#FBBC05]" />
@@ -567,7 +567,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                   <p className="text-[10px] text-[#5F6368] dark:text-zinc-500">Distribution of hours logged for each discipline.</p>
                 </div>
 
-                <div className="h-[220px]">
+                <div className="h-[220px] md:h-[260px] lg:h-[300px] xl:h-[340px]">
                   {monthStats.categoryPieData.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-xs text-gray-400">
                       No completed session data for this month.
@@ -609,7 +609,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               </Card>
 
               {/* Bar Chart: Weekly trend */}
-              <Card className="p-5 bg-white dark:bg-zinc-900 border border-[#E0E3E7] dark:border-zinc-800 flex flex-col justify-between rounded-[16px] shadow-sm">
+              <Card className="p-5 bg-white dark:bg-zinc-900 border border-[#E0E3E7] dark:border-zinc-800 flex flex-col h-full justify-between rounded-[16px] shadow-sm">
                 <div className="space-y-1 mb-4">
                   <h4 className="font-semibold text-[#3C4043] dark:text-zinc-100 flex items-center gap-1.5 text-sm font-sans">
                     <BarChart2 className="w-4 h-4 text-[#4285F4]" />
@@ -618,7 +618,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                   <p className="text-[10px] text-[#5F6368] dark:text-zinc-500">Total study and deep focus hours logged weekly.</p>
                 </div>
 
-                <div className="h-[220px]">
+                <div className="h-[220px] md:h-[260px] lg:h-[300px] xl:h-[340px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthStats.weeklyBarData}>
                       <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" />

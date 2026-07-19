@@ -1,7 +1,5 @@
 import * as React from "react";
 import { Settings as SettingsIcon, BarChart3, LayoutDashboard, Clock, Calendar } from "lucide-react";
-// @ts-ignore
-import logoPng from "../../assets/logo.png";
 
 interface HeaderProps {
   currentView: "dashboard" | "analytics";
@@ -60,7 +58,8 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center" style={{ height: "40px" }}>
           <img
-            src={logoPng}
+            src="/logo.png"
+            referrerPolicy="no-referrer"
             alt="GrindStreaks Logo"
             className="h-9 md:h-10 w-auto object-contain rounded-full"
           />
