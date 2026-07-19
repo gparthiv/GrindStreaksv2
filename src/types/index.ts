@@ -22,6 +22,8 @@ export interface DayRecord {
   studyTime: number;       // total active study/work duration in ms for this day
   completedCount: number;
   totalCount: number;
+  isDayStarted?: boolean;  // whether the user started their day
+  isDayEnded?: boolean;    // whether the user wrapped up their day
 }
 
 export interface Settings {

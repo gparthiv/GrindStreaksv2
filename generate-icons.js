@@ -60,7 +60,8 @@ async function run() {
   try {
     await generateIcon(192, 'public/icon-192.png');
     await generateIcon(512, 'public/icon-512.png');
-    console.log('Successfully generated PWA PNG icons!');
+    await generateIcon(192, 'src/assets/logo.png');
+    console.log('Successfully generated PWA PNG icons and src/assets/logo.png!');
   } catch (error) {
     console.error('Error generating icons:', error);
   }

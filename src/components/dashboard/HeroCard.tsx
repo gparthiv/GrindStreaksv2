@@ -55,8 +55,8 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         {/* Left Section: Today's Completion & Quote */}
         <div className="lg:col-span-7 space-y-4">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#5F6368] dark:text-zinc-400 uppercase tracking-wider">
-              Today's Progress
+            <span className="text-xs font-medium text-[#5F6368] dark:text-zinc-400 tracking-wider">
+              Today's progress
             </span>
             <h2 className="text-2xl md:text-3xl font-sans font-semibold tracking-tight text-gray-900 dark:text-zinc-100">
               Completion Rate: <span className="text-[#1A73E8] dark:text-blue-400">{completionRate}%</span>
@@ -80,19 +80,19 @@ export const HeroCard: React.FC<HeroCardProps> = ({
         <div className="lg:col-span-5 grid grid-cols-3 gap-3 md:gap-4 lg:border-l lg:border-[#F1F3F4] lg:dark:border-zinc-800 lg:pl-8">
           {/* Streak 1 */}
           <div id={`${id}-streak`} className="flex flex-col p-3 rounded-xl bg-[#F8F9FA] dark:bg-zinc-950 border border-[#F1F3F4] dark:border-zinc-900 transition-all hover:shadow-sm">
-            <span className="text-[10px] uppercase tracking-wider text-[#5F6368] dark:text-zinc-400 font-bold mb-1">Streak</span>
+            <span className="text-[11px] tracking-wider text-[#5F6368] dark:text-zinc-400 font-medium mb-1">Streak</span>
             <span className="text-xl font-semibold text-[#4285F4] dark:text-blue-400 mt-auto">{streak} Days</span>
           </div>
 
           {/* Streak 2 */}
           <div id={`${id}-longest`} className="flex flex-col p-3 rounded-xl bg-[#F8F9FA] dark:bg-zinc-950 border border-[#F1F3F4] dark:border-zinc-900 transition-all hover:shadow-sm">
-            <span className="text-[10px] uppercase tracking-wider text-[#5F6368] dark:text-zinc-400 font-bold mb-1">Best</span>
+            <span className="text-[11px] tracking-wider text-[#5F6368] dark:text-zinc-400 font-medium mb-1">Best streak</span>
             <span className="text-xl font-semibold text-[#1A73E8] dark:text-blue-500 mt-auto">{maxStreak} Days</span>
           </div>
 
           {/* Active Work Time */}
           <div id={`${id}-time`} className="flex flex-col p-3 rounded-xl bg-[#F8F9FA] dark:bg-zinc-950 border border-[#F1F3F4] dark:border-zinc-900 transition-all hover:shadow-sm">
-            <span className="text-[10px] uppercase tracking-wider text-[#5F6368] dark:text-zinc-400 font-bold mb-1">Study Time</span>
+            <span className="text-[11px] tracking-wider text-[#5F6368] dark:text-zinc-400 font-medium mb-1">Study time</span>
             <span className="text-xl font-semibold text-[#3C4043] dark:text-zinc-100 mt-auto font-sans tracking-tight">{formatStudyTime(studyTimeMs)}</span>
           </div>
         </div>

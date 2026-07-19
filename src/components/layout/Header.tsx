@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Settings as SettingsIcon, BarChart3, LayoutDashboard, Clock, Calendar } from "lucide-react";
 // @ts-ignore
-import logoUrl from "../../assets/logo.svg";
+import logoPng from "../../assets/logo.png";
 
 interface HeaderProps {
   currentView: "dashboard" | "analytics";
@@ -60,17 +60,17 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center" style={{ height: "40px" }}>
           <img
-            src={logoUrl}
+            src={logoPng}
             alt="GrindStreaks Logo"
-            className="h-9 md:h-10 w-auto object-contain"
+            className="h-9 md:h-10 w-auto object-contain rounded-full"
           />
         </div>
         <div className="space-y-0.5">
           <h1 className="text-base font-bold text-[#3C4043] dark:text-zinc-100 tracking-tight font-sans">
             GrindStreaks
           </h1>
-          <span className="text-[10px] text-[#5F6368] dark:text-zinc-500 font-bold tracking-wide uppercase">
-            Aesthetic Habit & Study Systems
+          <span className="text-[11px] text-[#5F6368] dark:text-zinc-400 font-medium tracking-wide">
+            Aesthetic habit & study systems
           </span>
         </div>
       </div>

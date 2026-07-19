@@ -320,23 +320,16 @@ export const loadTodayRecord = (): DayRecord => {
     }
   }
 
-  // If no record exists or it is from a previous day, we need to create one.
-  // Note: App.tsx or useTaskEngine will call checkDailyReset() to finalize yesterday
-  // and handle streaks before calling this or updating.
-  const customTemplates = loadCustomTemplates();
-  const timetable = loadTimetable();
-  const newTasks: Task[] = [
-    ...timetable.map(t => ({ ...t })),
-    ...customTemplates.map(t => ({ ...t, status: 'idle' as const, duration: 0, lastStarted: null, completedAt: null })),
-  ];
-
+  // If no record exists or it is from a previous day, create a fresh dynamic record.
   const newRecord: DayRecord = {
     date: todayStr,
-    tasks: newTasks,
+    tasks: [],
     completionRate: 0,
     studyTime: 0,
     completedCount: 0,
-    totalCount: newTasks.length,
+    totalCount: 0,
+    isDayStarted: false,
+    isDayEnded: false,
   };
 
   localStorage.setItem(STORAGE_KEYS.TODAY, JSON.stringify(newRecord));
@@ -406,25 +399,17 @@ export const checkDailyReset = (): { resetHappened: boolean; yesterdaySummary?: 
     history[yesterdayRecord.date] = yesterdayRecord;
     saveHistory(history);
 
-    // 2. Streak calculation: "Streak freeze if only one task missed"
-    // We only check main timetable tasks for the streak, as custom tasks are optional.
-    const mainTasks = yesterdayRecord.tasks.filter(t => t.type === 'Main');
-    const mainCompleted = mainTasks.filter(t => t.status === 'completed').length;
-    const mainTotal = mainTasks.length;
-    const mainMissed = mainTotal - mainCompleted;
+    // 2. Streak calculation: Dynamic study consistency
+    const completedStudyTasks = yesterdayRecord.tasks.filter(
+      t => isStudyCategory(t.category) && t.status === 'completed'
+    ).length;
 
     let newStreak = settings.streak;
-    
-    if (mainMissed === 0) {
-      // Completed all tasks! Increment streak
+    if (yesterdayRecord.isDayStarted && completedStudyTasks > 0) {
       newStreak += 1;
-    } else if (mainMissed === 1) {
-      // Missed exactly 1 task! Streak freeze (remains the same)
-      // Do nothing to newStreak, it is preserved
-    } else {
-      // Missed more than 1 task! Reset streak
+    } else if (yesterdayRecord.isDayStarted) {
       newStreak = 0;
-    }
+    } // If day was never started, freeze streak (maintain it)
 
     const newMaxStreak = Math.max(settings.maxStreak, newStreak);
     
@@ -440,20 +425,15 @@ export const checkDailyReset = (): { resetHappened: boolean; yesterdaySummary?: 
   saveSettings(settings);
 
   // 3. Create fresh record for today
-  const customTemplates = loadCustomTemplates();
-  const timetable = loadTimetable();
-  const freshTasks: Task[] = [
-    ...timetable.map(t => ({ ...t })),
-    ...customTemplates.map(t => ({ ...t, status: 'idle' as const, duration: 0, lastStarted: null, completedAt: null })),
-  ];
-
   const newRecord: DayRecord = {
     date: todayStr,
-    tasks: freshTasks,
+    tasks: [],
     completionRate: 0,
     studyTime: 0,
     completedCount: 0,
-    totalCount: freshTasks.length,
+    totalCount: 0,
+    isDayStarted: false,
+    isDayEnded: false,
   };
 
   localStorage.setItem(STORAGE_KEYS.TODAY, JSON.stringify(newRecord));

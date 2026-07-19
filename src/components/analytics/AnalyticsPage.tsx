@@ -152,14 +152,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
     let maxStudySessionMs = 0;
     let totalDaysLogged = monthRecords.length;
 
-    // Category distributions
-    const categoryDurations: { [cat: string]: number } = {
-      DSA: 0,
-      Web: 0,
-      CAT: 0,
-      Certificates: 0,
-      Custom: 0,
-    };
+    // Category distributions (fully dynamic map)
+    const categoryDurations: { [cat: string]: number } = {};
 
     // Calculate weekly study trend
     // Group by week of the month (1 to 5)
@@ -180,24 +174,25 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
       totalStudyMs += record.studyTime;
       
       record.tasks.forEach((task) => {
+        const isStudy = !(
+          task.category.toLowerCase().includes("routine") ||
+          task.category.toLowerCase().includes("rest") ||
+          task.category.toLowerCase().includes("sleep")
+        );
+
         // Find longest study session (excluding Routine)
-        if (task.category !== "Routine" && task.status === "completed" && task.duration > maxStudySessionMs) {
+        if (isStudy && task.status === "completed" && task.duration > maxStudySessionMs) {
           maxStudySessionMs = task.duration;
         }
 
-        // Category sums (excluding Routine)
-        if (task.status === "completed" && task.category !== "Routine") {
-          const cat = task.category;
-          if (task.type === "Custom") {
-            categoryDurations["Custom"] += task.duration;
-          } else if (categoryDurations[cat] !== undefined) {
-            categoryDurations[cat] += task.duration;
+        // Category sums
+        if (task.status === "completed") {
+          if (isStudy) {
+            const cat = task.category || "General";
+            categoryDurations[cat] = (categoryDurations[cat] || 0) + task.duration;
+          } else {
+            totalRoutineMs += task.duration;
           }
-        }
-
-        // Routine totals
-        if (task.status === "completed" && task.category === "Routine") {
-          totalRoutineMs += task.duration;
         }
       });
 
@@ -271,8 +266,14 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
     const categoryCompletionCounts: { [cat: string]: { completed: number; total: number } } = {};
     monthRecords.forEach(([_, r]) => {
       r.tasks.forEach(task => {
-        if (task.category !== 'Routine') {
-          const cat = task.category;
+        const isStudy = !(
+          task.category.toLowerCase().includes("routine") ||
+          task.category.toLowerCase().includes("rest") ||
+          task.category.toLowerCase().includes("sleep")
+        );
+
+        if (isStudy) {
+          const cat = task.category || "General";
           if (!categoryCompletionCounts[cat]) {
             categoryCompletionCounts[cat] = { completed: 0, total: 0 };
           }
@@ -298,8 +299,22 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
 
     monthRecords.forEach(([_, r]) => {
       r.tasks.forEach(task => {
-        if (task.category !== 'Routine') {
-          const isAm = task.scheduledStart.includes('AM');
+        const isStudy = !(
+          task.category.toLowerCase().includes("routine") ||
+          task.category.toLowerCase().includes("rest") ||
+          task.category.toLowerCase().includes("sleep")
+        );
+
+        if (isStudy) {
+          // Fall back to task creation/update hours if scheduledStart does not exist
+          let isAm = true;
+          if (task.scheduledStart) {
+            isAm = task.scheduledStart.includes('AM');
+          } else {
+            const dateObj = new Date(task.createdAt || Date.now());
+            isAm = dateObj.getHours() < 12;
+          }
+
           if (isAm) {
             morningTotal++;
             if (task.status === 'completed') morningCompleted++;
@@ -828,8 +843,9 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               ) : aiCoach ? (
                 <div className="space-y-4">
                   {/* Guideline banner */}
-                  <div className="p-3 bg-blue-50/50 border border-blue-100/50 dark:bg-blue-950/20 dark:border-blue-900/30 rounded-xl text-[11px] text-[#4285F4] font-bold">
-                    ⚡ {aiCoach.guideline}
+                  <div className="p-3 bg-blue-50/50 border border-blue-100/50 dark:bg-blue-950/20 dark:border-blue-900/30 rounded-xl text-[11px] text-[#4285F4] font-bold flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 fill-[#4285F4] animate-pulse" />
+                    <span>{aiCoach.guideline}</span>
                   </div>
 
                   {/* Highlights Bullet-points */}

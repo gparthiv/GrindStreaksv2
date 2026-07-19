@@ -191,29 +191,200 @@ export const useTaskEngine = () => {
     saveAndSetToday(updatedTasks);
   }, [activeTaskId, todayRecord, saveAndSetToday]);
 
-  // 5. ADD CUSTOM TASK (CRUD - CREATE)
-  const addCustomTask = useCallback((name: string, category: string) => {
+  // Dynamic Tags management
+  const [savedTags, setSavedTags] = useState<string[]>(() => {
+    const raw = localStorage.getItem('grindstreaks_saved_tags_v1');
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    const defaults = ['DSA', 'Web Dev', 'CAT Prep', 'Certifications & AI', 'Routines & Rest'];
+    localStorage.setItem('grindstreaks_saved_tags_v1', JSON.stringify(defaults));
+    return defaults;
+  });
+
+  const saveTag = useCallback((tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    setSavedTags(prev => {
+      if (prev.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      const updated = [...prev, trimmed];
+      localStorage.setItem('grindstreaks_saved_tags_v1', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // Morning Let's Start the Day Flow
+  const startDay = useCallback((firstTaskName: string, firstTaskTag: string) => {
     const now = Date.now();
-    const newId = `custom-${now}`;
-    const newTask: Task = {
+    const newId = `task-${now}`;
+    
+    const firstTask: Task = {
       id: newId,
-      name,
-      category,
+      name: firstTaskName.trim() || "First Task",
+      category: firstTaskTag.trim() || "Study",
       type: 'Custom',
-      status: 'idle',
+      status: 'running',
       duration: 0,
+      lastStarted: now,
       createdAt: now,
       updatedAt: now,
     };
 
-    // Save template for future resets
-    const currentTemplates = storage.loadCustomTemplates();
-    storage.saveCustomTemplates([...currentTemplates, newTask]);
+    saveTag(firstTaskTag);
 
-    // Add to active task list
-    const updatedTasks = [...todayRecord.tasks, newTask];
+    const updatedTasks = [firstTask];
+    const record = { 
+      ...todayRecord, 
+      tasks: updatedTasks, 
+      isDayStarted: true,
+      isDayEnded: false 
+    };
+    
+    const savedRecord = storage.saveTodayRecord(record);
+    setTodayRecord(savedRecord);
+    setActiveTaskId(newId);
+    
+    // Refresh history
+    setHistory(storage.loadHistory());
+  }, [todayRecord, saveTag]);
+
+  // Wrap Up Day Flow
+  const wrapUpDay = useCallback(() => {
+    const now = Date.now();
+    
+    // Pause any active task
+    const updatedTasks = todayRecord.tasks.map(t => {
+      if (t.status === 'running') {
+        const sessionDuration = t.lastStarted ? (now - t.lastStarted) : 0;
+        return {
+          ...t,
+          status: 'idle' as const,
+          duration: t.duration + sessionDuration,
+          lastStarted: null,
+          updatedAt: now
+        };
+      }
+      return t;
+    });
+
+    setActiveTaskId(null);
+
+    // Compute completed rate and duration
+    const completedCount = updatedTasks.filter(t => t.status === 'completed').length;
+    const totalCount = updatedTasks.length;
+    const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const studyTime = storage.getStudyTimeForTasks(updatedTasks);
+
+    const finalizedRecord: DayRecord = {
+      ...todayRecord,
+      tasks: updatedTasks,
+      completedCount,
+      totalCount,
+      completionRate,
+      studyTime,
+      isDayEnded: true
+    };
+
+    // Save active record
+    const savedRecord = storage.saveTodayRecord(finalizedRecord);
+    setTodayRecord(savedRecord);
+
+    // Sync to History
+    const currentHistory = storage.loadHistory();
+    currentHistory[todayRecord.date] = savedRecord;
+    storage.saveHistory(currentHistory);
+    setHistory(currentHistory);
+
+    // Calculate dynamic streak increment
+    const completedStudyTasks = updatedTasks.filter(
+      t => storage.isStudyCategory(t.category) && t.status === 'completed'
+    ).length;
+
+    const currentSettings = storage.loadSettings();
+    let newStreak = currentSettings.streak;
+    
+    if (completedStudyTasks > 0) {
+      newStreak += 1;
+    } else {
+      newStreak = 0;
+    }
+
+    const updatedSettings = {
+      ...currentSettings,
+      streak: newStreak,
+      maxStreak: Math.max(currentSettings.maxStreak, newStreak),
+    };
+
+    storage.saveSettings(updatedSettings);
+    setSettings(updatedSettings);
+  }, [todayRecord]);
+
+  // Reopen Day Flow
+  const reopenDay = useCallback(() => {
+    const record = {
+      ...todayRecord,
+      isDayEnded: false
+    };
+    const savedRecord = storage.saveTodayRecord(record);
+    setTodayRecord(savedRecord);
+
+    // Remove from yesterday's history
+    const currentHistory = storage.loadHistory();
+    delete currentHistory[todayRecord.date];
+    storage.saveHistory(currentHistory);
+    setHistory(currentHistory);
+  }, [todayRecord]);
+
+  // General Dynamic addTask
+  const addDynamicTask = useCallback((name: string, tag: string, startImmediately: boolean = false) => {
+    const now = Date.now();
+    const newId = `task-${now}`;
+    
+    saveTag(tag);
+
+    const newTask: Task = {
+      id: newId,
+      name: name.trim(),
+      category: tag.trim(),
+      type: 'Custom',
+      status: startImmediately ? 'running' : 'idle',
+      duration: 0,
+      lastStarted: startImmediately ? now : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    let updatedTasks = todayRecord.tasks;
+    if (startImmediately) {
+      // Pause current active task
+      updatedTasks = todayRecord.tasks.map(t => {
+        if (t.status === 'running') {
+          const sessionDuration = t.lastStarted ? (now - t.lastStarted) : 0;
+          return {
+            ...t,
+            status: 'idle' as const,
+            duration: t.duration + sessionDuration,
+            lastStarted: null,
+            updatedAt: now
+          };
+        }
+        return t;
+      });
+      setActiveTaskId(newId);
+    }
+
+    updatedTasks = [...updatedTasks, newTask];
     saveAndSetToday(updatedTasks);
-  }, [todayRecord, saveAndSetToday]);
+  }, [todayRecord, saveAndSetToday, saveTag]);
+
+  // 5. ADD CUSTOM TASK (Backward Compatibility)
+  const addCustomTask = useCallback((name: string, category: string) => {
+    addDynamicTask(name, category, false);
+  }, [addDynamicTask]);
 
   // 6. RENAME CUSTOM TASK (CRUD - UPDATE)
   const renameCustomTask = useCallback((id: string, newName: string) => {
@@ -352,6 +523,11 @@ export const useTaskEngine = () => {
     reloadTodayRecord,
     setTodayRecord,
     setSettings,
-    setHistory
+    setHistory,
+    savedTags,
+    startDay,
+    wrapUpDay,
+    reopenDay,
+    addDynamicTask
   };
 };

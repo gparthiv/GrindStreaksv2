@@ -1,329 +1,217 @@
 import * as React from "react";
 import { Card } from "../ui/card";
-import { Task } from "../../types";
-import { Plus, Search, Edit2, Trash2, Undo, Play, Check, RotateCcw, Clock, CheckSquare } from "lucide-react";
-import { formatTimer } from "./TimetableList";
+import { Task, DayRecord } from "../../types";
+import { Play, Sparkles, Moon, Sun, ArrowRight, CheckCircle, ShieldCheck } from "lucide-react";
 
 interface CustomTaskListProps {
-  tasks: Task[];
-  activeTaskId: string | null;
-  startTask: (id: string, force?: boolean) => { conflict: boolean; runningTaskId?: string };
-  pauseTask: (id: string) => void;
-  completeTask: (id: string) => void;
-  resetTask: (id: string) => void;
-  addCustomTask: (name: string, category: string) => void;
-  renameCustomTask: (id: string, newName: string) => void;
-  deleteCustomTask: (id: string) => { deletedTask: Task | undefined; undo: () => void };
-  getLiveDuration: (task: Task) => number;
+  todayRecord: DayRecord;
+  addDynamicTask: (name: string, tag: string, startImmediately?: boolean) => void;
+  wrapUpDay: () => void;
+  reopenDay: () => void;
   id: string;
 }
 
-const CATEGORIES = ["Custom", "DSA", "Web", "CAT", "Certificates", "Routine"];
+interface TemplateItem {
+  name: string;
+  tag: string;
+  desc: string;
+  color: string;
+}
+
+const QUICK_TEMPLATES: TemplateItem[] = [
+  {
+    name: "DSA Speedrun Session",
+    tag: "DSA",
+    desc: "Solve 2-3 LeetCode problems on arrays or trees.",
+    color: "from-emerald-500/20 to-teal-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+  },
+  {
+    name: "Web Crafting & Code",
+    tag: "Web Dev",
+    desc: "Build APIs, design features, or fix layout bugs.",
+    color: "from-blue-500/20 to-indigo-500/10 border-blue-500/20 text-blue-700 dark:text-blue-300",
+  },
+  {
+    name: "CAT Preparation Sprint",
+    tag: "CAT Prep",
+    desc: "Solve a mock paper or practice quantitative ability.",
+    color: "from-rose-500/20 to-orange-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300",
+  },
+  {
+    name: "AI & Certifications Research",
+    tag: "Certifications & AI",
+    desc: "Read research papers or complete cloud modules.",
+    color: "from-purple-500/20 to-pink-500/10 border-purple-500/20 text-purple-700 dark:text-purple-300",
+  },
+  {
+    name: "Routine, Rest & Meal Break",
+    tag: "Routines & Rest",
+    desc: "Recharge, take a walk, eat, or stretch.",
+    color: "from-zinc-500/20 to-slate-500/10 border-zinc-500/20 text-zinc-700 dark:text-zinc-300",
+  },
+];
 
 export const CustomTaskList: React.FC<CustomTaskListProps> = ({
-  tasks,
-  activeTaskId,
-  startTask,
-  pauseTask,
-  completeTask,
-  resetTask,
-  addCustomTask,
-  renameCustomTask,
-  deleteCustomTask,
-  getLiveDuration,
+  todayRecord,
+  addDynamicTask,
+  wrapUpDay,
+  reopenDay,
   id,
 }) => {
-  const [taskName, setTaskName] = React.useState("");
-  const [taskCategory, setTaskCategory] = React.useState("Custom");
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
-  const [editName, setEditName] = React.useState("");
-  
-  // Undo state
-  const [lastDeleted, setLastDeleted] = React.useState<{
-    task: Task;
-    restore: () => void;
-  } | null>(null);
+  const [showConfirmWrapUp, setShowConfirmWrapUp] = React.useState(false);
 
-  const customTasks = React.useMemo(() => tasks.filter((t) => t.type === "Custom"), [tasks]);
+  const completedStudyCount = React.useMemo(() => {
+    return todayRecord.tasks.filter(
+      (t) =>
+        t.status === "completed" &&
+        !(
+          t.category.toLowerCase().includes("routine") ||
+          t.category.toLowerCase().includes("rest") ||
+          t.category.toLowerCase().includes("sleep")
+        )
+    ).length;
+  }, [todayRecord.tasks]);
 
-  const filteredTasks = React.useMemo(() => {
-    return customTasks.filter((t) =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [customTasks, searchQuery]);
-
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskName.trim()) return;
-    addCustomTask(taskName.trim(), taskCategory);
-    setTaskName("");
-    setTaskCategory("Custom");
+  const handleSpawnTemplate = (template: TemplateItem) => {
+    if (todayRecord.isDayEnded) return;
+    addDynamicTask(template.name, template.tag, true);
   };
 
-  const handleRenameSubmit = (id: string) => {
-    if (!editName.trim()) return;
-    renameCustomTask(id, editName.trim());
-    setEditingTaskId(null);
-  };
-
-  const handleDelete = (id: string) => {
-    const res = deleteCustomTask(id);
-    if (res.deletedTask) {
-      setLastDeleted({
-        task: res.deletedTask,
-        restore: res.undo,
-      });
-      // Clear undo notice after 6 seconds
-      setTimeout(() => {
-        setLastDeleted((prev) => (prev?.task.id === id ? null : prev));
-      }, 6000);
-    }
-  };
-
-  const triggerUndo = () => {
-    if (lastDeleted) {
-      lastDeleted.restore();
-      setLastDeleted(null);
-    }
-  };
-
-  const startEdit = (task: Task) => {
-    setEditingTaskId(task.id);
-    setEditName(task.name);
+  const handleConfirmWrapUp = () => {
+    wrapUpDay();
+    setShowConfirmWrapUp(false);
   };
 
   return (
-    <div id={id} className="space-y-4">
-      {/* Header section with Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-0.5">
-          <h3 className="font-sans font-semibold text-[#3C4043] dark:text-zinc-100 text-lg">
-            Custom Tasks
-          </h3>
-          <p className="text-xs text-[#5F6368] dark:text-zinc-500 font-medium">Track tasks outside your regular timetable.</p>
+    <div id={id} className="space-y-6">
+      {/* 1. Day Control Widget */}
+      <Card className="p-5 border border-[#E0E3E7] dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-3xl shadow-sm relative overflow-hidden">
+        <div className="space-y-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[10px] font-bold text-[#4285F4] uppercase tracking-widest">
+                Day Controller
+              </span>
+              <h4 className="font-sans font-bold text-gray-800 dark:text-zinc-100 text-lg mt-0.5">
+                {todayRecord.isDayEnded ? "Day Completed!" : "In-Progress Flow"}
+              </h4>
+            </div>
+            {todayRecord.isDayEnded ? (
+              <Moon className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+            ) : (
+              <Sun className="w-5 h-5 text-amber-500 dark:text-amber-400 animate-spin-slow" />
+            )}
+          </div>
+
+          {!todayRecord.isDayEnded ? (
+            <>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed">
+                Log what you're working on, mark tasks as complete, and wrap up your day when you are ready to rest. We'll secure your daily metrics.
+              </p>
+
+              {showConfirmWrapUp ? (
+                <div className="p-3.5 bg-amber-50 dark:bg-amber-950/25 rounded-2xl border border-amber-200/50 space-y-3">
+                  <div className="space-y-1">
+                    <h5 className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                      Confirm Wrap Up
+                    </h5>
+                    <p className="text-[11px] text-amber-700/95 dark:text-amber-400/90 leading-normal">
+                      Are you sure you want to end your productive day? Any active trackers will be paused, and your stats will be recorded.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setShowConfirmWrapUp(false)}
+                      className="px-3 py-1 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-bold text-gray-500 dark:text-zinc-400 border-none cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmWrapUp}
+                      className="px-3.5 py-1 bg-[#EA4335] hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-colors border-none cursor-pointer"
+                    >
+                      Yes, Wrap Up
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowConfirmWrapUp(true)}
+                  disabled={!todayRecord.isDayStarted}
+                  className="w-full py-3 bg-[#EA4335] hover:bg-red-600 disabled:bg-[#EA4335]/35 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-bold transition-all shadow-sm border-none cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Moon className="w-4 h-4" />
+                  WRAP UP & END THE DAY
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl flex gap-3 items-start">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <h5 className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    Day Log Secured
+                  </h5>
+                  <p className="text-[11px] text-emerald-700/90 dark:text-zinc-400 leading-normal">
+                    You have logged <span className="font-bold">{completedStudyCount} study session(s)</span> today. Enjoy your rest! Come back tomorrow to start a fresh cycle.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={reopenDay}
+                className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-[#5F6368] dark:text-zinc-300 rounded-2xl text-xs font-bold transition-colors border-none cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Sun className="w-4 h-4" />
+                Reopen Active Day
+              </button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* 2. Quick Templates */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="w-4 h-4 text-[#4285F4] animate-pulse" />
+          <h4 className="font-sans font-semibold text-[#3C4043] dark:text-zinc-100 text-sm">
+            Quick Spark templates
+          </h4>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search custom tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 bg-white border border-[#E0E3E7] rounded-xl text-xs text-[#3C4043] focus:outline-none focus:ring-2 focus:ring-[#4285F4]/30 dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-200"
-          />
+        <div className="space-y-3">
+          {QUICK_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.name}
+              disabled={todayRecord.isDayEnded}
+              onClick={() => handleSpawnTemplate(tpl)}
+              className={`w-full text-left p-3.5 rounded-2xl border bg-gradient-to-r transition-all duration-200 ${tpl.color} ${
+                todayRecord.isDayEnded
+                  ? "opacity-40 cursor-not-allowed"
+                  : "hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 cursor-pointer"
+              } flex justify-between items-center`}
+            >
+              <div className="space-y-1 pr-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold tracking-wider uppercase bg-white/60 dark:bg-black/30 px-2 py-0.5 rounded-md">
+                    {tpl.tag}
+                  </span>
+                </div>
+                <h5 className="text-xs font-extrabold tracking-tight font-sans">
+                  {tpl.name}
+                </h5>
+                <p className="text-[11px] opacity-75 leading-normal">
+                  {tpl.desc}
+                </p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/70 dark:bg-black/30 flex-shrink-0">
+                <Play className="w-3.5 h-3.5 fill-current" />
+              </div>
+            </button>
+          ))}
         </div>
       </div>
-
-      {/* Add Task Form */}
-      <form onSubmit={handleAdd} className="grid grid-cols-1 sm:grid-cols-12 gap-3 p-4 bg-white dark:bg-zinc-950 border border-[#E0E3E7] dark:border-zinc-900 rounded-[16px] items-center shadow-sm">
-        <div className="sm:col-span-6">
-          <input
-            type="text"
-            placeholder="What study session or habit to track today?"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-            className="w-full px-4 py-2 bg-white border border-[#E0E3E7] rounded-xl text-xs text-[#3C4043] focus:outline-none focus:ring-2 focus:ring-[#4285F4]/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-200"
-          />
-        </div>
-
-        <div className="sm:col-span-3">
-          <select
-            value={taskCategory}
-            onChange={(e) => setTaskCategory(e.target.value)}
-            className="w-full px-4 py-2 bg-white border border-[#E0E3E7] rounded-xl text-xs text-[#5F6368] dark:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#4285F4]/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300 font-semibold"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="sm:col-span-3">
-          <button
-            type="submit"
-            className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-[#34A853] hover:bg-green-600 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer border-none"
-          >
-            <Plus className="w-4 h-4" />
-            Add Task
-          </button>
-        </div>
-      </form>
-
-      {/* Undo Banner */}
-      {lastDeleted && (
-        <div className="flex items-center justify-between p-3 bg-gray-950 text-white rounded-xl shadow-lg border border-gray-800 text-xs animate-fade-in animate-duration-200">
-          <div className="flex items-center gap-2">
-            <CheckSquare className="w-4 h-4 text-[#34A853]" />
-            <span>Task <strong>"{lastDeleted.task.name}"</strong> deleted.</span>
-          </div>
-          <button
-            onClick={triggerUndo}
-            className="flex items-center gap-1 text-[#4285F4] hover:text-blue-400 font-semibold transition-colors uppercase text-[10px] tracking-wider"
-          >
-            <Undo className="w-3.5 h-3.5" />
-            Undo
-          </button>
-        </div>
-      )}
-
-      {/* Task List Grid */}
-      {filteredTasks.length === 0 ? (
-        <div className="text-center py-10 border border-dashed border-[#E0E3E7] dark:border-zinc-800 rounded-[16px] bg-[#F8F9FA] dark:bg-zinc-950/20">
-          <p className="text-xs text-[#5F6368] dark:text-zinc-500 font-medium">
-            {searchQuery ? "No matching custom tasks found." : "No custom tasks created for today."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredTasks.map((task) => {
-            const liveDuration = getLiveDuration(task);
-            const isCompleted = task.status === "completed";
-            const isRunning = task.status === "running";
-            const isEditing = editingTaskId === task.id;
-
-            return (
-              <Card
-                key={task.id}
-                id={`custom-task-card-${task.id}`}
-                className={`p-4 md:p-5 flex flex-col justify-between gap-4 transition-all duration-200 bg-white dark:bg-zinc-900 ${
-                  isCompleted 
-                    ? "border border-[#E0E3E7] dark:border-zinc-850 opacity-40 select-none" 
-                    : isRunning
-                      ? "border-2 border-[#4285F4] ring-4 ring-[#4285F4]/10 shadow-md"
-                      : "border border-[#E0E3E7] dark:border-zinc-800 shadow-sm"
-                }`}
-              >
-                {/* Upper block with Title / Category / Rename Input */}
-                <div className="flex justify-between items-start gap-2">
-                  <div className="space-y-1 flex-1">
-                    <span className="text-[10px] font-mono font-bold text-[#1A73E8] bg-[#E8F0FE] dark:bg-blue-950/40 dark:text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {task.category}
-                    </span>
-                    
-                    {isEditing ? (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit(task.id)}
-                          className="px-2 py-1 border border-[#E0E3E7] dark:border-zinc-800 text-xs text-[#3C4043] dark:text-zinc-100 bg-white dark:bg-zinc-900 rounded-lg w-full focus:outline-none"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleRenameSubmit(task.id)}
-                          className="px-2.5 py-1 text-[10px] font-bold bg-[#34A853] hover:bg-green-600 text-white rounded-lg cursor-pointer border-none"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingTaskId(null)}
-                          className="px-2.5 py-1 text-[10px] font-bold bg-black hover:bg-zinc-900 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-white rounded-lg cursor-pointer border-none"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <h4 className={`text-sm md:text-base font-semibold font-sans mt-2 ${
-                        isRunning ? "text-[#1A73E8] dark:text-blue-400 font-bold" : "text-[#3C4043] dark:text-zinc-200"
-                      }`}>
-                        {task.name}
-                      </h4>
-                    )}
-                  </div>
-
-                  {/* Actions (Rename / Delete) - Only if not completed */}
-                  {!isCompleted && !isEditing && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => startEdit(task)}
-                        className="p-1 text-gray-400 hover:text-[#1A73E8] dark:hover:text-zinc-200 rounded hover:bg-[#F1F3F4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                        title="Rename task"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="p-1 text-gray-400 hover:text-[#EA4335] dark:hover:text-red-400 rounded hover:bg-[#F1F3F4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                        title="Delete task"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                  {isCompleted && (
-                    <button
-                      onClick={() => handleDelete(task.id)}
-                      className="p-1 text-gray-400 hover:text-[#EA4335] dark:hover:text-red-400 rounded hover:bg-[#F1F3F4] dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                      title="Delete task history"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Lower block with Live Timer & Controls */}
-                <div className="flex items-center justify-between border-t border-[#F1F3F4] dark:border-zinc-800/50 pt-3">
-                  {/* Timer */}
-                  <div className="flex items-center gap-1.5 font-sans text-xs md:text-sm text-[#5F6368] dark:text-zinc-400">
-                    <Clock className={`w-3.5 h-3.5 ${isRunning ? "text-[#4285F4] animate-pulse" : ""}`} />
-                    <span className={`font-semibold tabular-nums ${isRunning ? "text-[#4285F4] font-bold" : ""}`}>
-                      {formatTimer(liveDuration)}
-                    </span>
-                  </div>
-
-                  {/* Play & Complete controls */}
-                  <div className="flex gap-1.5">
-                    {!isCompleted && isRunning ? (
-                      <button
-                        onClick={() => pauseTask(task.id)}
-                        className="px-3 py-1.5 rounded-lg bg-[#EA4335] text-white hover:bg-red-600 text-xs font-bold shadow-sm transition-colors cursor-pointer border-none"
-                        title="Pause task"
-                      >
-                        PAUSE
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => startTask(task.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-[#34A853] hover:bg-green-600 text-white shadow-sm border-none"
-                        title={isCompleted ? "Restart session" : "Start task"}
-                      >
-                        {isCompleted ? "RESTART" : "START"}
-                      </button>
-                    )}
-
-                    {!isCompleted && (
-                      <button
-                        onClick={() => completeTask(task.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer bg-[#34A853] hover:bg-green-600 text-white disabled:bg-[#34A853]/40 disabled:text-white/60 disabled:cursor-not-allowed border-none"
-                        title="Mark as Completed"
-                        disabled={!isRunning && liveDuration === 0}
-                      >
-                        DONE
-                      </button>
-                    )}
-
-                    {(isCompleted || liveDuration > 0) && (
-                      <button
-                        onClick={() => resetTask(task.id)}
-                        className="p-1.5 rounded-lg bg-white border border-[#E0E3E7] hover:bg-[#F1F3F4] text-[#5F6368] dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
-                        title="Reset task timer"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 };

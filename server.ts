@@ -127,6 +127,29 @@ Ensure the highlights contain interesting, computed data-driven metrics in human
   }
 });
 
+app.get("/api/ai/quote", async (req, res) => {
+  try {
+    const name = req.query.name as string || "high-performer";
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ quote: "Your limitation—it's only your imagination. Make today count." });
+    }
+
+    const ai = getAI();
+    const promptText = `Generate a single, short, powerful, minimalist motivational quote for a student/developer named "${name}" who is starting their day. Keep it under 15 words, clean, and deeply inspiring. Avoid cliché phrases. Do not put quotation marks around the response.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: promptText,
+    });
+
+    const quote = response.text?.trim() || "Great things never come from comfort zones.";
+    res.json({ quote });
+  } catch (error: any) {
+    console.error("Quote API error:", error);
+    res.json({ quote: "Great things never come from comfort zones. Let's build today!" });
+  }
+});
+
 // Serve frontend assets using Vite middleware or express static
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
